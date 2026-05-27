@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether Fourier Transform & Harmonic Series Visualizer</title>
+  <meta name="description" content="An interactive real-time Fourier series synthesiser and signal analysis laboratory with audio feedback, draggable spectra, phasor epicycles, and wave rectification.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-section">
+        <h1>Aether Fourier Lab</h1>
+        <p>Real-Time Harmonic Analysis & Synthesis Engine</p>
+      </div>
+      
+      <div class="header-audio-controls">
+        <div class="audio-toggle-wrapper">
+          <button id="soundToggle" class="sound-toggle-btn" aria-label="Toggle Audio Output">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+            <span>Audio Synth: OFF</span>
+          </button>
+        </div>
+        
+        <div class="slider-group accent-violet" style="min-width: 180px;">
+          <div class="slider-label-row">
+            <span>Playing Freq (pitch)</span>
+            <span id="playingFreqVal" class="slider-value">440 Hz</span>
+          </div>
+          <input type="range" id="playingFreq" min="1.3" max="3.3" step="0.01" value="2.64"> <!-- log scale mappings -->
+        </div>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <div class="dashboard-grid">
+      
+      <!-- LEFT SECTION: OSCILLOSCOPE, SPECTRUMS & PHASORS -->
+      <div class="oscilloscope-section">
+        
+        <!-- 1. Oscilloscope Canvas Panel -->
+        <div class="glass-panel">
+          <div class="panel-title">
+            <span>Signal Oscilloscope</span>
+            <span id="rmsReading" class="panel-subtitle-stat">RMS: 0.000</span>
+          </div>
+          
+          <div class="oscilloscope-canvas-container">
+            <div class="canvas-legend">
+              <div class="legend-item amber">Input wave</div>
+              <div class="legend-item cyan">Fourier Reconstruction</div>
+            </div>
+            <canvas id="scopeCanvas"></canvas>
+            <div class="canvas-help-text">Click & Drag inside oscilloscope to draw custom wave</div>
+          </div>
+          
+          <!-- Number of terms slider -->
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <span style="font-weight: 600; color: var(--color-cyan);">Number of Harmonics (Terms)</span>
+              <span id="harmonicsCountVal" class="slider-value" style="color: var(--color-cyan);">16</span>
+            </div>
+            <input type="range" id="harmonicsCount" min="1" max="100" step="1" value="16">
+          </div>
+        </div>
+
+        <!-- 2. Spectra Stems Panels -->
+        <div class="spectrum-row">
+          
+          <!-- Sine Coefficients (b_n) -->
+          <div class="glass-panel">
+            <div class="panel-title">
+              <span>Sine Coefficients (b<sub>n</sub>) - Odd Symmetry</span>
+            </div>
+            <div class="spectrum-canvas-container">
+              <canvas id="sineSpectrumCanvas"></canvas>
+              <div class="label-sin">SINES</div>
+            </div>
+            <p style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: -4px;">
+              Drag the nodes to manually change sine component amplitudes (n = 1 to 100)
+            </p>
+          </div>
+
+          <!-- Cosine Coefficients (a_n) -->
+          <div class="glass-panel">
+            <div class="panel-title">
+              <span>Cosine Coefficients (a<sub>n</sub>) - Even Symmetry</span>
+            </div>
+            <div class="spectrum-canvas-container">
+              <canvas id="cosineSpectrumCanvas"></canvas>
+              <div class="label-cos">COSINES</div>
+            </div>
+            <p style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: -4px;">
+              Drag the nodes to manually change cosine component amplitudes (n = 1 to 100)
+            </p>
+          </div>
+
+        </div>
+
+        <!-- 3. Phasor Epicycles Visualizer Panel (Full Width at Bottom) -->
+        <div class="glass-panel">
+          <div class="panel-title">
+            <span>Phasor Circle Epicycles</span>
+            <span class="panel-subtitle-stat">Euler Representation</span>
+          </div>
+          <div class="phasor-container">
+            <canvas id="phasorCanvas"></canvas>
+          </div>
+          <p style="font-size: 0.72rem; color: var(--color-text-muted); text-align: center;">
+            Vector epicycles tip-to-tail drawing the wave in real-time.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- RIGHT SECTION: CONTROLS & PHASORS -->
+      <div class="flex-col gap-md">
+        
+        <!-- Preset & Signal Shaping controls -->
+        <div class="glass-panel">
+          <div class="panel-title">Signal presets</div>
+          
+          <div class="preset-grid">
+            <button class="btn-preset active" data-preset="sine">Sine</button>
+            <button class="btn-preset" data-preset="cosine">Cosine</button>
+            <button class="btn-preset" data-preset="square">Square</button>
+            <button class="btn-preset" data-preset="triangle">Triangle</button>
+            <button class="btn-preset" data-preset="sawtooth">Sawtooth</button>
+            <button class="btn-preset" id="btnClear" style="color: var(--color-rose);">Clear</button>
+          </div>
+          
+          <div class="slider-group accent-amber">
+            <div class="slider-label-row">
+              <span>Amplitude</span>
+              <span id="amplitudeVal" class="slider-value">0.70</span>
+            </div>
+            <input type="range" id="amplitude" min="0" max="1" step="0.01" value="0.7">
+          </div>
+
+          <div class="slider-group accent-amber">
+            <div class="slider-label-row">
+              <span>Fundamental Frequency</span>
+              <span id="freqVal" class="slider-value">1.0 Hz</span>
+            </div>
+            <input type="range" id="freq" min="0.5" max="5.0" step="0.1" value="1.0">
+          </div>
+
+          <div class="slider-group accent-amber">
+            <div class="slider-label-row">
+              <span>Phase Shift</span>
+              <span id="phaseVal" class="slider-value">0.00 rad</span>
+            </div>
+            <input type="range" id="phase" min="-3.14" max="3.14" step="0.05" value="0">
+          </div>
+        </div>
+
+        <!-- Rectification & Modifiers Panel -->
+        <div class="glass-panel">
+          <div class="panel-title">Rectification & Clipping</div>
+          
+          <div class="toggle-btn-group">
+            <button class="btn-toggle active" id="rectifyNone">No Rectify</button>
+            <button class="btn-toggle" id="rectifyHalf">Half Wave</button>
+            <button class="btn-toggle" id="rectifyFull">Full Wave</button>
+            <button class="btn-toggle" id="toggleClipping">Clipping OFF</button>
+          </div>
+
+          <div class="slider-group accent-rose" id="clippingSliderGroup" style="opacity: 0.4; pointer-events: none;">
+            <div class="slider-label-row">
+              <span>Clipping Level</span>
+              <span id="clippingVal" class="slider-value">1.00</span>
+            </div>
+            <input type="range" id="clipping" min="0.05" max="1.0" step="0.02" value="1.0">
+          </div>
+        </div>
+
+        <!-- Noise Injection Panel -->
+        <div class="glass-panel">
+          <div class="panel-title">Noise Injection</div>
+          
+          <div class="toggle-btn-group">
+            <button class="btn-toggle active" id="noiseNone">No Noise</button>
+            <button class="btn-toggle" id="noiseWhite">White Noise</button>
+            <button class="btn-toggle" id="noiseSine">Sine Wave Noise</button>
+            <span style="font-size:0.75rem; display:flex; align-items:center; justify-content:center; color:var(--color-text-muted);">Mode</span>
+          </div>
+
+          <div class="slider-group accent-rose" id="noiseAmpSliderGroup" style="opacity: 0.4; pointer-events: none;">
+            <div class="slider-label-row">
+              <span>Noise Amplitude</span>
+              <span id="noiseAmpVal" class="slider-value">0.10</span>
+            </div>
+            <input type="range" id="noiseAmp" min="0" max="0.5" step="0.01" value="0.1">
+          </div>
+
+          <div class="slider-group accent-rose" id="noiseFreqSliderGroup" style="opacity: 0.4; pointer-events: none;">
+            <div class="slider-label-row">
+              <span>Noise Freq (Multiple of f<sub>0</sub>)</span>
+              <span id="noiseFreqVal" class="slider-value">10x</span>
+            </div>
+            <input type="range" id="noiseFreq" min="2" max="30" step="1" value="10">
+          </div>
+        </div>
+
+        <!-- Real-Time Metrics Panel (Sidebar Card) -->
+        <div class="glass-panel">
+          <div class="panel-title">
+            <span>Real-Time Metrics</span>
+          </div>
+          <div class="vertical-stats">
+            <div class="stat-box">
+              <span class="stat-label">Total Input Energy</span>
+              <span id="inputEnergyVal" class="stat-value">0.000 W</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Reconstructed Energy</span>
+              <span id="reconEnergyVal" class="stat-value">0.000 W</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Synthesis Accuracy</span>
+              <span id="synthesisAccuracyVal" class="stat-value">0.0 %</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Fundamental Period</span>
+              <span id="fundamentalPeriodVal" class="stat-value">1.00 s</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- FOOTER -->
+    <footer>
+      <span>Aether Fourier Lab Engine &copy; 2026</span>
+      <span>|</span>
+      <span>Built with Canvas &amp; Web Audio API</span>
+      <span>|</span>
+      <span>Double-click canvas to reset presets</span>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
